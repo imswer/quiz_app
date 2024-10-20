@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .login-form, .admin-dashboard, .user-dashboard, .register-form {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        h2 {
+            color: #333;
+        }
+        input[type="email"], input[type="password"], input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+        }
+        .quiz-list {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        .quiz-card {
+            background-color: #007BFF;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            width: 30%;
+        }
+        .sidebar {
+            height: 100%;
+            width: 200px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            padding-top: 20px;
+            z-index: 100;
+            color: white;
+        }
+        .sidebar a {
+            padding: 10px 15px;
+            text-decoration: none;
+            font-size: 18px;
+            color: white;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #575757;
+        }
+        .content {
+            margin-left: 220px;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .question {
+            margin-bottom: 15px;
+        }
+        .results-list {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Login Form -->
+    <div id="login-form" class="login-form active">
+        <h2>Login to Quiz Application</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="login-message"></p>
+        <button onclick="showRegister()">Register</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" class="register-form">
+        <h2>Register</h2>
+        <input type="email" id="register-email" placeholder="Email">
+        <input type="password" id="register-password" placeholder="Password">
+        <button onclick="register()">Register</button>
+        <p id="register-message"></p>
+        <button onclick="showLogin()">Back to Login</button>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="admin-dashboard">
+        <div class="sidebar">
+            <a href="#" onclick="showSection('admin-home')">Home</a>
+            <a href="#" onclick="showSection('add-quiz')">Add Quiz</a>
+            <a href="#" onclick="showSection('view-results')">Results</a>
+            <a href="#" onclick="loadQuizData()">Load Quizzes</a>
+            <a href="#" onclick="downloadData()">Download Quiz Data</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+        <div class="content">
+            <div id="admin-home" class="dashboard-section active">
+                <h2>Welcome, Admin</h2>
+                <div class="quiz-list" id="admin-quiz-list"></div>
+            </div>
+            <div id="add-quiz" class="dashboard-section">
+                <h2>Add a Quiz</h2>
+                <input type="text" id="quiz-title" placeholder="Quiz Title">
+                <div id="questions-container">
+                    <div class="question">
+                        <h3>Question 1</h3>
+                        <input type="text" placeholder="Enter question" class="quiz-question">
+                        <input type="text" placeholder="Option A" class="option">
+                        <input type="text" placeholder="Option B" class="option">
+                        <input type="text" placeholder="Option C" class="option">
+                        <input type="text" placeholder="Option D" class="option">
+                        <input type="text" placeholder="Correct Answer" class="correct-answer">
+                    </div>
+                </div>
+                <button onclick="addQuestion()">Add Another Question</button>
+                <button onclick="submitQuiz()">Submit Quiz</button>
+            </div>
+            <div id="view-results" class="dashboard-section">
+                <h2>Quiz Results</h2>
+                <div class="results-list" id="results-list"></div>
+                <button onclick="downloadResults()">Download Results</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Dashboard -->
+    <div id="user-dashboard" class="user-dashboard">
+        <div class="sidebar">
+            <a href="#" onclick="showSection('user-home')">Home</a>
+            <a href="#" onclick="showSection('user-results')">Results</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+        <div class="content">
+            <div id="user-home" class="dashboard-section active">
+                <h2>Welcome, User</h2>
+                <div class="quiz-list" id="user-quiz-list"></div>
+            </div>
+            <div id="user-results" class="dashboard-section">
+                <h2>Your Results</h2>
+                <div id="user-result-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simulate user database
+    let users = [
+        { email: 'admin@example.com', password: 'admin', role: 'admin' },
+        { email: 'user@example.com', password: 'user', role: 'user' }
+    ];
+
+    // Simulate quiz and result databases
+    let quizzes = [];
+    let userResults = {};
+
+    function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const user = users.find(u => u.email === email && u.password === password);
+
+        if (user) {
+            if (user.role === 'admin') {
+                document.getElementById('login-form').classList.remove('active');
+                document.getElementById('admin-dashboard').classList.add('active');
+                loadQuizzes('admin');
+            } else {
+                document.getElementById('login-form').classList.remove('active');
+                document.getElementById('user-dashboard').classList.add('active');
+                loadQuizzes('user');
+            }
+        } else {
+            document.getElementById('login-message').innerText = 'Invalid credentials!';
+        }
+    }
+
+    function showRegister() {
+        document.getElementById('login-form').classList.remove('active');
+        document.getElementById('register-form').classList.add('active');
+    }
+
+    function showLogin() {
+        document.getElementById('register-form').classList.remove('active');
+        document.getElementById('login-form').classList.add('active');
+    }
+
+    function register() {
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+
+        const existingUser = users.find(u => u.email === email);
+        if (existingUser) {
+            document.getElementById('register-message').innerText = 'Email already exists!';
+            return;
+        }
+
+        const newUser = { email, password, role: 'user' };
+        users.push(newUser);
+        document.getElementById('register-message').innerText = 'Registration successful!';
+        document.getElementById('register-email').value = '';
+        document.getElementById('register-password').value = '';
+    }
+
+    function logout() {
+        document.getElementById('admin-dashboard').classList.remove('active');
+        document.getElementById('user-dashboard').classList.remove('active');
+        document.getElementById('login-form').classList.add('active');
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+    }
+
+    function showSection(sectionId) {
+        document.querySelectorAll('.dashboard-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        document.getElementById(sectionId).classList.add('active');
+    }
+
+    function addQuestion() {
+        const questionsContainer = document.getElementById('questions-container');
+        const questionCount = document.querySelectorAll('.question').length + 1;
+
+        const questionDiv = document.createElement('div');
+        questionDiv.classList.add('question');
+        questionDiv.innerHTML = `
+            <h3>Question ${questionCount}</h3>
+            <input type="text" placeholder="Enter question" class="quiz-question">
+            <input type="text" placeholder="Option A" class="option">
+            <input type="text" placeholder="Option B" class="option">
+            <input type="text" placeholder="Option C" class="option">
+            <input type="text" placeholder="Option D" class="option">
+            <input type="text" placeholder="Correct Answer" class="correct-answer">
+        `;
+        questionsContainer.appendChild(questionDiv);
+    }
+
+    function submitQuiz() {
+        const quizTitle = document.getElementById('quiz-title').value;
+        const questions = Array.from(document.querySelectorAll('.question')).map(q => {
+            return {
+                question: q.querySelector('.quiz-question').value,
+                options: [
+                    q.querySelectorAll('.option')[0].value,
+                    q.querySelectorAll('.option')[1].value,
+                    q.querySelectorAll('.option')[2].value,
+                    q.querySelectorAll('.option')[3].value,
+                ],
+                answer: q.querySelector('.correct-answer').value,
+            };
+        });
+
+        const quiz = { title: quizTitle, questions: questions };
+        quizzes.push(quiz);
+        loadQuizzes('admin');
+        document.getElementById('quiz-title').value = '';
+        document.getElementById('questions-container').innerHTML = '';
+    }
+
+    function loadQuizzes(role) {
+        const quizList = role === 'admin' ? document.getElementById('admin-quiz-list') : document.getElementById('user-quiz-list');
+        quizList.innerHTML = '';
+
+        quizzes.forEach((quiz, index) => {
+            const quizCard = document.createElement('div');
+            quizCard.classList.add('quiz-card');
+            quizCard.innerHTML = `
+                <h3>${quiz.title}</h3>
+                <button onclick="takeQuiz(${index})">Take Quiz</button>
+            `;
+            quizList.appendChild(quizCard);
+        });
+    }
+
+    function takeQuiz(index) {
+        const quiz = quizzes[index];
+        let score = 0;
+
+        quiz.questions.forEach((q) => {
+            const userAnswer = prompt(`${q.question}\n${q.options.join('\n')}`);
+            if (userAnswer === q.answer) {
+                score++;
+            }
+        });
+
+        alert(`Your score: ${score} out of ${quiz.questions.length}`);
+        const email = document.getElementById('email').value;
+        userResults[email] = userResults[email] || [];
+        userResults[email].push({ quizTitle: quiz.title, score: score });
+        loadUserResults(email);
+    }
+
+    function loadUserResults(email) {
+        const resultList = document.getElementById('user-result-list');
+        resultList.innerHTML = '';
+        const results = userResults[email] || [];
+
+        results.forEach(result => {
+            const resultItem = document.createElement('div');
+            resultItem.innerHTML = `<strong>${result.quizTitle}:</strong> ${result.score}`;
+            resultList.appendChild(resultItem);
+        });
+    }
+
+    function downloadData() {
+        const data = {
+            users: users,
+            quizzes: quizzes
+        };
+        
+        const dataStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'app_data.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function downloadResults() {
+        const resultsData = Object.entries(userResults).map(([email, results]) => ({
+            email,
+            results
+        }));
+
+        const dataStr = JSON.stringify(resultsData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'quiz_results.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function loadQuizData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                const data = JSON.parse(content);
+                users = data.users || [];
+                quizzes = data.quizzes || [];
+                loadQuizzes('admin');
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+</script>
+</body>
+</html>
